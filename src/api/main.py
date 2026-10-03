@@ -1,6 +1,14 @@
+import os
+import sys
+from pathlib import Path
 import uuid
+
+# Ensure repository root is on sys.path when running as a script (e.g. python src/api/main.py)
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
+
 import httpx
 import psycopg2
+import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from src.core.models import AnalysisCompleteEvent, ProposalReadyEvent
@@ -73,3 +81,7 @@ async def health_check():
 
     status = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
     return {"status": status, "checks": checks}
+
+
+if __name__ == "__main__":
+    uvicorn.run("src.api.main:app", host="0.0.0.0", port=8000, reload=True)
