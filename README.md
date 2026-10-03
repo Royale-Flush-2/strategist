@@ -71,6 +71,35 @@ uv run python -m src.api.main
 
 *The server will start at `http://127.0.0.1:8000`.*
 
+## Docker & AWS Deployment (ECS / App Runner)
+
+The Docker image uses a multi-stage `uv` build and runs a minimal, non-root Debian container running standard Uvicorn. This is ideal for persistent connection pooling and direct HTTP routing between services in AWS ECS or AWS App Runner.
+
+### Build the Docker Image
+```bash
+docker build -t strategist:latest .
+```
+
+### Run Locally with Docker
+```bash
+docker run -p 8000:8000 \
+  -e CENTINELA_DATABASE_URL="postgresql://user:pass@host:5432/dbname" \
+  -e CENTINELA_KNOWLEDGE_SERVICE_URL="http://host.docker.internal:8001" \
+  strategist:latest
+```
+
+### Deploy to AWS (ECR + ECS / App Runner)
+1. Authenticate Docker with Amazon ECR:
+   ```bash
+   aws ecr get-login-password --region <REGION> | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com
+   ```
+2. Tag and push the image:
+   ```bash
+   docker tag strategist:latest <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/strategist:latest
+   docker push <ACCOUNT_ID>.dkr.ecr.<REGION>.amazonaws.com/strategist:latest
+   ```
+3. Deploy the container on AWS ECS (Fargate), AWS App Runner, or EKS passing environment variables (`CENTINELA_DATABASE_URL`, `CENTINELA_KNOWLEDGE_SERVICE_URL`, `CENTINELA_LOG_LEVEL`).
+
 ## API Endpoints
 
 - **POST `/api/v1/strategist/analyze`**: Submit an `AnalysisComplete` payload. Returns a `ProposalReady` payload.

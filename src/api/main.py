@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 import uuid
 
-# Ensure repository root is on sys.path when running as a script (e.g. python src/api/main.py)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 import httpx
@@ -26,7 +25,7 @@ app = FastAPI(
     description="Consumes root cause analysis and formulates actionable proposals."
 )
 
-# Dependency Injection
+
 llm_provider = NotImplementedLLMProvider()
 database_client = PostgresAdapter(database_url=settings.database_url)
 vector_client = KnowledgeServiceAdapter(base_url=settings.knowledge_service_url)
@@ -37,7 +36,6 @@ agent = StrategistAgent(
     vector_store=vector_client
 )
 
-# Global Error Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
@@ -64,7 +62,6 @@ async def analyze_anomaly(event: AnalysisCompleteEvent):
 async def health_check():
     checks = {}
     
-    # Check DB
     try:
         conn = psycopg2.connect(settings.database_url, options="-c statement_timeout=2000")
         conn.close()
@@ -72,7 +69,6 @@ async def health_check():
     except Exception as e:
         checks["database"] = f"error: {e}"
         
-    # Check Knowledge Service
     try:
         r = httpx.get(f"{settings.knowledge_service_url.rstrip('/')}/health", timeout=2.0)
         checks["knowledge_service"] = "ok" if r.status_code == 200 else f"error: status {r.status_code}"
