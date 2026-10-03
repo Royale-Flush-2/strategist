@@ -3,9 +3,11 @@
 This directory contains the bootstrapped microservice for the **Strategist** agent of the Centinela autonomous system.
 
 ## Role
+
 The Strategist consumes root cause analysis events (`AnalysisComplete`), evaluates financial impact in COP, and formulates actionable, specific proposals for human review (`ProposalReady`).
 
 ## Architecture
+
 - **Framework**: FastAPI
 - **Data Models**: Pydantic strictly enforcing the data contracts defined in `02_Data_Contracts.md`
 - **Logic Modules**:
@@ -17,17 +19,21 @@ The Strategist consumes root cause analysis events (`AnalysisComplete`), evaluat
 ## Setup & Running Locally
 
 1. **Activate the virtual environment**:
+
    ```bash
    source venv/bin/activate
    ```
 
 2. **Run the FastAPI server**:
+
    ```bash
    python main.py
    ```
+
    *The server will start at `http://127.0.0.1:8000` with auto-reload enabled.*
 
 ## API Endpoints
+
 - **POST `/api/v1/strategist/analyze`**: Submit an `AnalysisComplete` payload. Returns a `ProposalReady` payload.
 - **GET `/health`**: Returns the health status of the microservice.
 
