@@ -6,13 +6,8 @@ terraform {
     }
   }
   
-  # IMPORTANT: For GitHub Actions, you should use a remote backend like S3 to preserve state across runs.
-  # Uncomment and configure this block if you have an S3 bucket for Terraform state:
-  # backend "s3" {
-  #   bucket = "your-terraform-state-bucket"
-  #   key    = "strategist-api/terraform.tfstate"
-  #   region = "us-east-1"
-  # }
+  # The backend configuration is passed dynamically via GitHub Actions
+  backend "s3" {}
 }
 
 provider "aws" {
@@ -71,6 +66,30 @@ resource "aws_iam_role" "apprunner_instance_role" {
   })
 }
 
+resource "aws_iam_policy" "apprunner_secrets" {
+  name        = "${var.app_name}-secrets-policy"
+  description = "Allow App Runner to read Secrets Manager"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "kms:Decrypt"
+        ]
+        Effect   = "Allow"
+        Resource = [aws_secretsmanager_secret.app_db_url.arn]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "apprunner_secrets_attach" {
+  role       = aws_iam_role.apprunner_instance_role.name
+  policy_arn = aws_iam_policy.apprunner_secrets.arn
+}
+
 # AWS App Runner Service
 resource "aws_apprunner_service" "app_service" {
   service_name = var.app_name
@@ -86,11 +105,15 @@ resource "aws_apprunner_service" "app_service" {
 
       image_configuration {
         port = "8000"
+        
         runtime_environment_variables = {
-          CENTINELA_DATABASE_URL          = var.database_url
           CENTINELA_KNOWLEDGE_SERVICE_URL = var.knowledge_service_url
           CENTINELA_LOG_LEVEL             = var.log_level
           PORT                            = "8000"
+        }
+        
+        runtime_environment_secrets = {
+          CENTINELA_DATABASE_URL = aws_secretsmanager_secret.app_db_url.arn
         }
       }
     }
@@ -101,8 +124,16 @@ resource "aws_apprunner_service" "app_service" {
     cpu               = "1024" # 1 vCPU
     memory            = "2048" # 2 GB
   }
+  
+  network_configuration {
+    egress_configuration {
+      egress_type       = "VPC"
+      vpc_connector_arn = aws_apprunner_vpc_connector.connector.arn
+    }
+  }
 
   depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr_access
+    aws_iam_role_policy_attachment.apprunner_ecr_access,
+    aws_iam_role_policy_attachment.apprunner_secrets_attach
   ]
 }
