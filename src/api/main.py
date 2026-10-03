@@ -1,29 +1,27 @@
-from fastapi import FastAPI, HTTPException
+import uuid
+import httpx
+import psycopg2
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from src.core.models import AnalysisCompleteEvent, ProposalReadyEvent
 from src.core.agent import StrategistAgent
+from src.core.config import settings
+from src.core.logging import get_logger
+from src.adapters.not_implemented_adapters import NotImplementedLLMProvider
+from src.adapters.postgres_adapter import PostgresAdapter
+from src.adapters.knowledge_service_adapter import KnowledgeServiceAdapter
 
-# IMPORTANT: Import your concrete adapters here once built!
-from src.adapters.not_implemented_adapters import (
-    NotImplementedLLMProvider,
-    NotImplementedDatabase,
-    NotImplementedVectorStore
-)
+logger = get_logger("centinela.strategist", settings.log_level)
 
 app = FastAPI(
     title="Centinela - El Estratega (The Strategist)", 
     description="Consumes root cause analysis and formulates actionable proposals."
 )
 
-# Dependency Injection!
-# Right now, these will throw NotImplementedError when called.
-# To make this production-ready, replace these with:
-# llm = GeminiAdapter(api_key=...)
-# db = PostgresAdapter(dsn=...)
-# vector_store = PgVectorAdapter(dsn=...)
-
+# Dependency Injection
 llm_provider = NotImplementedLLMProvider()
-database_client = NotImplementedDatabase()
-vector_client = NotImplementedVectorStore()
+database_client = PostgresAdapter(database_url=settings.database_url)
+vector_client = KnowledgeServiceAdapter(base_url=settings.knowledge_service_url)
 
 agent = StrategistAgent(
     llm=llm_provider,
@@ -31,21 +29,47 @@ agent = StrategistAgent(
     vector_store=vector_client
 )
 
+# Global Error Handlers
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": exc.detail, "detail": None, "trace_id": str(uuid.uuid4())},
+    )
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Internal server error", "detail": str(exc), "trace_id": str(uuid.uuid4())},
+    )
+
 @app.post("/api/v1/strategist/analyze", response_model=ProposalReadyEvent)
 async def analyze_anomaly(event: AnalysisCompleteEvent):
-    """
-    Receives an AnalysisComplete payload, processes it through the Strategist agent,
-    and returns a ProposalReady payload containing structured, actionable solutions.
-    """
     try:
-        result = agent.process_event(event)
-        return result
+        return agent.process_event(event)
     except NotImplementedError as e:
-        # We catch NotImplementedError specifically to return a 501
         raise HTTPException(status_code=501, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    checks = {}
+    
+    # Check DB
+    try:
+        conn = psycopg2.connect(settings.database_url, options="-c statement_timeout=2000")
+        conn.close()
+        checks["database"] = "ok"
+    except Exception as e:
+        checks["database"] = f"error: {e}"
+        
+    # Check Knowledge Service
+    try:
+        r = httpx.get(f"{settings.knowledge_service_url.rstrip('/')}/health", timeout=2.0)
+        checks["knowledge_service"] = "ok" if r.status_code == 200 else f"error: status {r.status_code}"
+    except Exception as e:
+        checks["knowledge_service"] = f"error: {e}"
+
+    status = "healthy" if all(v == "ok" for v in checks.values()) else "degraded"
+    return {"status": status, "checks": checks}
