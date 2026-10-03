@@ -1,40 +1,78 @@
 # Centinela - El Estratega (The Strategist)
 
-This directory contains the bootstrapped microservice for the **Strategist** agent of the Centinela autonomous system.
+This directory contains the microservice for the **Strategist** agent of the Centinela autonomous system.
 
 ## Role
 
 The Strategist consumes root cause analysis events (`AnalysisComplete`), evaluates financial impact in COP, and formulates actionable, specific proposals for human review (`ProposalReady`).
 
-## Architecture
+## Architecture & Code Structure
 
 - **Framework**: FastAPI
-- **Data Models**: Pydantic strictly enforcing the data contracts defined in `02_Data_Contracts.md`
-- **Logic Modules**:
-  - `models.py`: Pydantic definitions for event payloads.
-  - `agent.py`: The core LLM and RAG logic skeleton (currently mocked).
-  - `tools.py`: Deterministic financial calculations.
-  - `main.py`: Exposes the `/api/v1/strategist/analyze` REST endpoint.
+- **Data Models**: Pydantic models enforcing event payloads and contracts.
+- **Project Structure**:
+  - `src/core/models.py`: Pydantic definitions for event payloads (`AnalysisCompleteEvent`, `ProposalReadyEvent`, `Proposal`, `FinancialBaseline`).
+  - `src/core/agent.py`: Core Strategist agent coordinating memory checks, LLM generation, and deterministic DB impact calculations.
+  - `src/core/ports/`: Interfaces/contracts (`IDatabase`, `ILLMProvider`, `IVectorStore`).
+  - `src/adapters/`: Concrete implementations (`PostgresAdapter`, `KnowledgeServiceAdapter`, `NotImplementedLLMProvider`).
+  - `src/core/config.py`: Environment configuration via `pydantic-settings`.
+  - `src/core/logging.py`: Structured JSON logger.
+  - `src/api/main.py`: FastAPI application exposing endpoints and dependency injection.
 
 ## Setup & Running Locally
 
-1. **Activate the virtual environment**:
+### 1. Environment & Dependencies
 
-   ```bash
-   source venv/bin/activate
-   ```
+Using `uv`:
 
-2. **Run the FastAPI server**:
+```bash
+uv sync
+```
 
-   ```bash
-   python main.py
-   ```
+Or activate the virtual environment:
 
-   *The server will start at `http://127.0.0.1:8000` with auto-reload enabled.*
+```bash
+source .venv/bin/activate
+```
+
+Copy the example environment file if needed:
+
+```bash
+cp .env.example .env
+```
+
+### 2. Run the FastAPI Server
+
+You can run the server using either `uvicorn` (recommended) or `python`:
+
+**Option A (Recommended with uvicorn):**
+
+```bash
+uv run uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+or if the virtualenv is activated:
+
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Option B (Direct python script or module):**
+
+```bash
+uv run python src/api/main.py
+```
+
+or:
+
+```bash
+uv run python -m src.api.main
+```
+
+*The server will start at `http://127.0.0.1:8000`.*
 
 ## API Endpoints
 
 - **POST `/api/v1/strategist/analyze`**: Submit an `AnalysisComplete` payload. Returns a `ProposalReady` payload.
-- **GET `/health`**: Returns the health status of the microservice.
-
-You can interactively test the API using the built-in Swagger UI at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+- **GET `/health`**: Returns the health status of the microservice and its downstream dependencies (Postgres database and Knowledge Service).
+- **Interactive API Docs (Swagger UI)**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
