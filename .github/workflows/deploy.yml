@@ -129,14 +129,14 @@ jobs:
           TF_VAR_knowledge_service_url: ${{ secrets.CENTINELA_KNOWLEDGE_SERVICE_URL }}
           TF_VAR_deepseek_api_key: ${{ secrets.DEEPSEEK_API_KEY }}
         run: |
-          for i in {1..10}; do
+          for i in {1..30}; do
             echo "Attempt $i to apply Terraform..."
             if terraform apply -auto-approve; then
               echo "Terraform apply succeeded!"
               exit 0
             fi
-            echo "Terraform apply failed (likely OPERATION_IN_PROGRESS). Retrying in 30 seconds..."
-            sleep 30
+            echo "Terraform apply failed (likely OPERATION_IN_PROGRESS). Retrying in 10 seconds..."
+            sleep 10
           done
-          echo "Terraform apply failed after 10 attempts."
+          echo "Terraform apply failed after 30 attempts."
           exit 1
