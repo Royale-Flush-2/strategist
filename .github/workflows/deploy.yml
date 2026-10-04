@@ -71,8 +71,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-2
         run: |
-          echo "Waiting 15 seconds to let App Runner catch up with ECR push..."
-          sleep 15
+          echo "Waiting 45 seconds to let App Runner catch up with ECR push..."
+          sleep 45
           echo "Waiting for any ongoing AppRunner deployments to finish..."
           while true; do
             STATUS=$(aws apprunner list-services --region us-east-2 --query "ServiceSummaryList[?ServiceName=='strategist-api'].Status" --output text || echo "UNKNOWN")
@@ -108,8 +108,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_REGION: us-east-2
         run: |
-          echo "Waiting 15 seconds to let App Runner catch up with ECR push..."
-          sleep 15
+          echo "Waiting 45 seconds to let App Runner catch up with ECR push..."
+          sleep 45
           echo "Waiting for any ongoing AppRunner deployments to finish..."
           while true; do
             STATUS=$(aws apprunner list-services --region us-east-2 --query "ServiceSummaryList[?ServiceName=='strategist-api'].Status" --output text || echo "UNKNOWN")
