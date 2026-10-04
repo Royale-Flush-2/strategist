@@ -22,6 +22,13 @@ variable "knowledge_service_url" {
   default     = "http://localhost:8001"
 }
 
+variable "deepseek_api_key" {
+  description = "DeepSeek API Key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "log_level" {
   description = "Log level"
   type        = string

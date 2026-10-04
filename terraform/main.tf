@@ -110,6 +110,7 @@ resource "aws_apprunner_service" "app_service" {
           CENTINELA_KNOWLEDGE_SERVICE_URL = var.knowledge_service_url
           CENTINELA_LOG_LEVEL             = var.log_level
           PORT                            = "8000"
+          CENTINELA_DEEPSEEK_API_KEY      = var.deepseek_api_key
         }
         
         runtime_environment_secrets = {

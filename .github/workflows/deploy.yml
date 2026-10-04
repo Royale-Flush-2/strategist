@@ -127,4 +127,5 @@ jobs:
         env:
           TF_VAR_database_url: ${{ secrets.CENTINELA_DATABASE_URL }}
           TF_VAR_knowledge_service_url: ${{ secrets.CENTINELA_KNOWLEDGE_SERVICE_URL }}
+          TF_VAR_deepseek_api_key: ${{ secrets.DEEPSEEK_API_KEY }}
         run: terraform apply -auto-approve
