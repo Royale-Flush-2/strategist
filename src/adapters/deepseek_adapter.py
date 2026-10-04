@@ -19,10 +19,12 @@ class DeepSeekAdapter(ILLMProvider):
         system_prompt = (
             "You are an AI strategist for a financial operations team. "
             "Your task is to generate actionable proposals based on anomaly analysis. "
-            "You must return your proposals as a JSON object containing a 'proposals' array. "
-            "Each object in the array should have the following fields: "
-            "'proposal_id' (string), 'action_type' (string), 'description' (string), "
-            "'estimated_impact_cop' (number), 'parameters' (object), 'is_recommended' (boolean)."
+            "You must return your proposals STRICTLY following the 'Agent Markdown format'. "
+            "You must generate at least 3 strategies, meaning you MUST include at least 3 '# action' components.\n"
+            "For each '# action', use fields: '## id:', '## title:', '## protects:', '## cost:', '## confidence:', and '## assumptions:'.\n"
+            "You MUST also include a '# decision' component at the end with the combinations table ('## combinations:') and rejection reasons ('## rejection reasons:').\n"
+            "Additionally, you may use any other Agent Markdown components (such as '# chart', '# kpi', '# evidence') if you think they are helpful to present your strategy.\n"
+            "Do NOT return JSON. Do NOT wrap in ```markdown. Return only the raw markdown text."
         )
 
         user_prompt = (
@@ -33,7 +35,7 @@ class DeepSeekAdapter(ILLMProvider):
             f"Financial Baseline: Margin {event.financial_baseline.current_margin_cop}, Affected Revenue {event.financial_baseline.affected_revenue_cop}\n"
             f"Policy Context: {', '.join(event.policy_context)}\n"
             f"Constraints: {constraints}\n\n"
-            "Please generate the JSON output."
+            "Please generate the Agent Markdown output."
         )
 
         headers = {
@@ -46,9 +48,7 @@ class DeepSeekAdapter(ILLMProvider):
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
-            ],
-            # Use json_object to guarantee JSON formatting if supported, otherwise standard generation
-            "response_format": {"type": "json_object"}
+            ]
         }
 
         with httpx.Client(timeout=30.0) as client:
@@ -62,22 +62,11 @@ class DeepSeekAdapter(ILLMProvider):
 
         content = data["choices"][0]["message"]["content"]
         
-        try:
-            # Handle potential markdown wrappers if the model ignores JSON mode
-            content_cleaned = content.strip()
-            if content_cleaned.startswith("```json"):
-                content_cleaned = content_cleaned[7:-3]
-            elif content_cleaned.startswith("```"):
-                content_cleaned = content_cleaned[3:-3]
-                
-            parsed = json.loads(content_cleaned)
+        # Strip potential markdown wrappers
+        content_cleaned = content.strip()
+        if content_cleaned.startswith("```markdown"):
+            content_cleaned = content_cleaned[11:-3]
+        elif content_cleaned.startswith("```"):
+            content_cleaned = content_cleaned[3:-3]
             
-            # Since we requested an object with a 'proposals' array
-            if "proposals" in parsed:
-                return parsed["proposals"]
-            elif isinstance(parsed, list):
-                return parsed
-            else:
-                return [parsed]
-        except Exception as e:
-            raise ValueError(f"Failed to parse DeepSeek response as JSON.\nResponse: {content}") from e
+        return content_cleaned

@@ -18,7 +18,7 @@ class KnowledgeServiceAdapter(IVectorStore):
             response = httpx.post(
                 f"{self.base_url}/api/v1/knowledge/search",
                 json={"query": query, "namespace": "audit_log", "top_k": 5},
-                timeout=10.0,
+                timeout=180.0,
             )
             response.raise_for_status()
             data = response.json()

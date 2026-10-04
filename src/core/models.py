@@ -27,4 +27,5 @@ class ProposalReadyEvent(BaseModel):
     pesos_at_risk: float
     summary_sentence: str
     confidence_level: str
-    proposals: List[Proposal]
+    proposals: List[Proposal] = []
+    markdown: str = ""

@@ -21,31 +21,15 @@ class StrategistAgent:
             entities=event.entities_involved
         )
 
-        raw_solutions = self.llm.generate_solutions(event, constraints)
-
-        proposals = []
-        for idx, sol in enumerate(raw_solutions):
-            impact = self.db.calculate_action_impact(
-                action_type=sol["action_type"], 
-                parameters=sol["parameters"], 
-                current_margin_cop=event.financial_baseline.current_margin_cop
-            )
-            
-            proposals.append(
-                Proposal(
-                    proposal_id=f"P-{idx+1}",
-                    action_type=sol["action_type"],
-                    description=sol["description"],
-                    estimated_impact_cop=impact,
-                    parameters=sol["parameters"],
-                    is_recommended=(idx == 0)
-                )
-            )
-
+        raw_solutions_md = self.llm.generate_solutions(event, constraints)
+        
         return ProposalReadyEvent(
             alert_id=event.alert_id,
             pesos_at_risk=event.financial_baseline.affected_revenue_cop,
             summary_sentence=f"Actionable proposals generated for: {event.anomaly_category}",
             confidence_level="High",
-            proposals=proposals
+            proposals=[],
+            markdown=raw_solutions_md
         )
+
+
