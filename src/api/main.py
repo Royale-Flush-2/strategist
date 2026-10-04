@@ -14,7 +14,7 @@ from src.core.models import AnalysisCompleteEvent, ProposalReadyEvent
 from src.core.agent import StrategistAgent
 from src.core.config import settings
 from src.core.logging import get_logger
-from src.adapters.not_implemented_adapters import NotImplementedLLMProvider
+from src.adapters.deepseek_adapter import DeepSeekAdapter
 from src.adapters.postgres_adapter import PostgresAdapter
 from src.adapters.knowledge_service_adapter import KnowledgeServiceAdapter
 
@@ -26,7 +26,7 @@ app = FastAPI(
 )
 
 
-llm_provider = NotImplementedLLMProvider()
+llm_provider = DeepSeekAdapter()
 database_client = PostgresAdapter(database_url=settings.database_url)
 vector_client = KnowledgeServiceAdapter(base_url=settings.knowledge_service_url)
 
